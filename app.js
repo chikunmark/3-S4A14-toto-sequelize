@@ -8,6 +8,9 @@ const flash = require('connect-flash')
 const app = express()
 const PORT = 3000
 
+// 先試試，可能有問題
+const usePassport = require('./config/passport')
+
 const routes = require('./routes/index')
 
 // 全改完後可能會要殺掉
@@ -19,9 +22,6 @@ app.engine('hbs', exphbs({ defaultLayout: 'main', extname: '.hbs' }))
 app.set('view engine', 'hbs')
 app.use(express.urlencoded({ extended: true }))
 app.use(methodOverride('_method'))
-
-// 先試試，可能有問題
-const usePassport = require('./config/passport')
 
 // 跟教案擺的位置不同
 app.use(
