@@ -1,4 +1,6 @@
+const passport = require('passport')
 const express = require('express')
+const session = require('express-session')
 const exphbs = require('express-handlebars')
 const methodOverride = require('method-override')
 const bcrypt = require('bcryptjs')
@@ -14,10 +16,24 @@ app.set('view engine', 'hbs')
 app.use(express.urlencoded({ extended: true }))
 app.use(methodOverride('_method'))
 
+// 先試試，可能有問題
+const usePassport = require('./config/passport')
+
+// 跟教案擺的位置不同
+app.use(
+  session({
+    secret: 'ThisIsMySecret',
+    resave: false,
+    saveUninitialized: true,
+  })
+)
+
+usePassport(app)
+
 app.get('/', (req, res) => {
   return Todo.findAll({ raw: true, nest: true })
     .then(todos => {
-      console.log(todos)
+      // console.log(todos)
       return res.render('index', { todos: todos })
     })
     .catch(error => {
@@ -36,9 +52,13 @@ app.get('/users/login', (req, res) => {
   res.render('login')
 })
 
-app.post('/users/login', (req, res) => {
-  res.send('login')
-})
+app.post(
+  '/users/login',
+  passport.authenticate('local', {
+    successRedirect: '/',
+    failureRedirect: '/users/login',
+  })
+)
 
 app.get('/users/register', (req, res) => {
   res.render('register')
@@ -46,7 +66,30 @@ app.get('/users/register', (req, res) => {
 
 app.post('/users/register', (req, res) => {
   const { name, email, password, confirmPassword } = req.body
-  User.create({ name, email, password }).then(user => res.redirect('/'))
+  User.findOne({ where: { email } }).then(user => {
+    // console.log(user.toJSON()) // 測試 findOne 結果
+    if (user) {
+      console.log('User already exists')
+      return res.render('register', {
+        name,
+        email,
+        password,
+        confirmPassword,
+      })
+    }
+    return bcrypt
+      .genSalt(10)
+      .then(salt => bcrypt.hash(password, salt))
+      .then(hash =>
+        User.create({
+          name,
+          email,
+          password: hash,
+        })
+      )
+      .then(() => res.redirect('/'))
+      .catch(err => console.log(err))
+  })
 })
 
 app.get('/users/logout', (req, res) => {
